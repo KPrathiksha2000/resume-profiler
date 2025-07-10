@@ -20,8 +20,8 @@ function Login() {
 
   return (
     <>
-      <h1>Resume Builder</h1>
-      <div>
+      <h1 className='loginheading'>Resume Builder</h1>
+      <div className="login">
         <h2>Log In</h2>
         <input
           placeholder="Email"

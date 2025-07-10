@@ -21,8 +21,8 @@ function Signup() {
 
   return (
     <>
-      <h1>Resume Builder</h1>
-      <div>
+      <h1 className='signupheading'>Resume Builder</h1>
+      <div className="signup">
         <h2>Sign Up</h2>
         <input
           placeholder="Name"

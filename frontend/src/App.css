@@ -36,6 +36,49 @@
     transform: rotate(360deg);
   }
 }
+.login {
+  box-sizing: border-box;
+  max-width: 400px;
+  margin: 30px auto;
+  padding: 30px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);  
+}
+
+.loginheading{
+  text-align: center;
+}
+
+.signup{
+  box-sizing: border-box;
+  max-width: 400px;
+  margin: 30px auto;
+  padding: 30px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);  
+}
+
+.signupheading{
+  text-align: center;
+}
+
+.signup input{
+  width: 90%;
+}
+
+.login input{
+  width: 90%;
+}
+
+.resumebuilder input {
+  width: 90%;
+}
+
+.sociallink input{
+  width: 50%;
+}
 
 /* Global Reset */
 body {

@@ -7,16 +7,7 @@ function ResumeBuilder() {
   const [user, setUser] = useState({ name: '', email: '' });
 const [formData, setFormData] = useState({
   photo: '',
-  socialLinks: {
-    linkedin: '',
-    github: '',
-    leetcode: '',
-    hackerrank: '',
-    youtube: '',
-    codeschef: '',
-    twitter: '',
-    instagram: '',
-  },
+  socialLinks: [],
   contactInfo: {
     contact: '',
     email: '',
@@ -31,6 +22,15 @@ const [formData, setFormData] = useState({
   certifications: [],
 });
 
+const SOCIAL_MEDIA_OPTIONS = [
+  "LinkedIn", "GitHub", "LeetCode", "HackerRank", "YouTube",
+  "CodeChef", "Twitter", "Instagram", "Facebook", "Reddit",
+  "StackOverflow", "Dribbble", "Behance", "Medium", "Dev.to"
+];
+const [newSocialPlatform, setNewSocialPlatform] = useState('');
+const [newSocialUrl, setNewSocialUrl] = useState('');
+
+
   const navigate = useNavigate();
 
 const token = localStorage.getItem('token');
@@ -41,13 +41,16 @@ useEffect(() => {
     return;
   }
 
-  // Decode user from token
-  const payload = JSON.parse(atob(token.split('.')[1]));
-  setUser({ name: payload.name, email: payload.email });
-  fetchUser();
-  fetchResume();
-}, [token]);
-
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/resume/me", {
+        headers: { Authorization: token }
+      });
+      setUser(res.data);
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    }
+  };
 
   const fetchResume = async () => {
     try {
@@ -60,17 +63,25 @@ useEffect(() => {
     }
   };
 
-  
-  const fetchUser = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/resume/me", {
-        headers: { Authorization: token }
-      });
-      setUser(res.data);
-    } catch (err) {
-      console.error("Failed to fetch user:", err);
-    }
-  };
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  setUser({ name: payload.name, email: payload.email });
+
+  fetchUser();
+  fetchResume();
+}, [token, navigate]);
+
+const addSocialLink = () => {
+  if (!newSocialPlatform || !newSocialUrl) return;
+
+  setFormData({
+    ...formData,
+    socialLinks: [...formData.socialLinks, { platform: newSocialPlatform, url: newSocialUrl }]
+  });
+
+  setNewSocialPlatform('');
+  setNewSocialUrl('');
+};
+
   
   const handleFileUpload = async (e) => {
     const form = new FormData();
@@ -147,6 +158,18 @@ const downloadPdf = () => {
     });
 };
 
+const deleteItem = (field, index) => {
+  const updated = [...formData[field]];
+  updated.splice(index, 1);
+  setFormData({ ...formData, [field]: updated });
+};
+
+const updateField = (section, index, key, value) => {
+  const updated = [...formData[section]];
+  updated[index] = { ...updated[index], [key]: value };
+  setFormData({ ...formData, [section]: updated });
+};
+
 
   return (
     <div className="resumebuilder">
@@ -171,22 +194,50 @@ const downloadPdf = () => {
           )}
       </div>
 
-      <div>
-        <h3>Social Links</h3>
-        {['linkedin', 'github', 'leetcode', 'hackerrank', 'youtube', 'codeschef', 'twitter', 'instagram'].map(link => (
-          <input
-            key={link}
-            placeholder={link}
-            value={formData.socialLinks[link] || ''}
-            onChange={e =>
-              setFormData({
-                ...formData,
-                socialLinks: { ...formData.socialLinks, [link]: e.target.value },
-              })
-            }
-          />
-        ))}
-      </div>
+<div className='sociallink'>
+  <h3>Social Links</h3>
+  
+  {formData.socialLinks.map((link, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('socialLinks', i)}>🗑️</span>
+      <strong>{link.platform}:</strong>
+      <input
+        type="text"
+        value={link.url}
+        onChange={(e) => {
+          const updated = [...formData.socialLinks];
+          updated[i].url = e.target.value;
+          setFormData({ ...formData, socialLinks: updated });
+        }}
+        style={{ flex: 1 }}
+      />
+    </div>
+  ))}
+
+  <div style={{ marginTop: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+    <select
+      value={newSocialPlatform}
+      onChange={(e) => setNewSocialPlatform(e.target.value)}
+    >
+      <option value="">Select Platform</option>
+      {SOCIAL_MEDIA_OPTIONS.map((platform) => (
+        <option key={platform} value={platform}>{platform}</option>
+      ))}
+    </select>
+
+    {newSocialPlatform && (
+      <input
+        type="text"
+        placeholder={`Enter ${newSocialPlatform} URL`}
+        value={newSocialUrl}
+        onChange={(e) => setNewSocialUrl(e.target.value)}
+      />
+    )}
+    
+    <button onClick={addSocialLink}>Add link</button>
+  </div>
+</div>
+
 
       <div>
         <h3>Contact Info</h3>
@@ -195,79 +246,209 @@ const downloadPdf = () => {
         <input placeholder="Address" onChange={e => setFormData({ ...formData, contactInfo: { ...formData.contactInfo, address: e.target.value } })} value={formData.contactInfo.address || ''} />
       </div>
 
-      <div>
-        <h3>Skills</h3>
-        {formData.skills.map((skill, i) => (
-          <input key={i} value={skill} onChange={e => handleArrayChange('skills', i, e.target.value)} />
-        ))}
-        <button onClick={() => addField('skills')}> Add Skill</button>
-      </div>
+<div>
+  <h3>Skills</h3>
+  {formData.skills.map((skill, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('skills', i)}>🗑️</span>
+      <input
+        value={skill}
+        onChange={e => handleArrayChange('skills', i, e.target.value)}
+        style={{ flex: 1 }}
+      />
+    </div>
+  ))}
+  <button onClick={() => addField('skills')}>Add Skill</button>
+</div>
 
-      <div>
-        <h3>Languages</h3>
-        {formData.languages.map((lang, i) => (
-          <input key={i} value={lang} onChange={e => handleArrayChange('languages', i, e.target.value)} />
-        ))}
-        <button onClick={() => addField('languages')}> Add Language</button>
-      </div>
+<div>
+  <h3>Languages</h3>
+  {formData.languages.map((lang, i) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('languages', i)}>🗑️</span>
+      <input
+        value={lang}
+        onChange={e => handleArrayChange('languages', i, e.target.value)}
+        style={{ flex: 1 }}
+      />
+    </div>
+  ))}
+  <button onClick={() => addField('languages')}>Add Language</button>
+</div>
+
 
       <div>
         <h3>About Me</h3>
         <textarea value={formData.aboutMe} onChange={e => setFormData({ ...formData, aboutMe: e.target.value })} />
       </div>
 
-      <div>
-        <h3>Experience</h3>
-        {formData.experience.map((exp, i) => (
-          <input key={i} value={exp} onChange={e => handleArrayChange('experience', i, e.target.value)} />
-        ))}
-        <button onClick={() => addField('experience')}> Add Experience</button>
+<div>
+  <h3>Experience</h3>
+  {formData.experience.map((exp, i) => (
+    <div key={i} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
+      <div style={{ textAlign: 'right' }}>
+        <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('experience', i)}>🗑️</span>
       </div>
+      <input
+        placeholder="From - To"
+        value={exp.duration || ''}
+        onChange={e => updateField('experience', i, 'duration', e.target.value)}
+      />
+      <input
+        placeholder="Company Name"
+        value={exp.company || ''}
+        onChange={e => updateField('experience', i, 'company', e.target.value)}
+      />
+      <input
+        placeholder="Job Role"
+        value={exp.role || ''}
+        onChange={e => updateField('experience', i, 'role', e.target.value)}
+      />
+      <select
+        value={exp.type || ''}
+        onChange={e => updateField('experience', i, 'type', e.target.value)}
+      >
+        <option value="">Select Type</option>
+        <option value="Full-time">Full-time</option>
+        <option value="Part-time">Part-time</option>
+        <option value="Intern">Intern</option>
+      </select>
+      <input
+        placeholder="Skills Used"
+        value={exp.skills || ''}
+        onChange={e => updateField('experience', i, 'skills', e.target.value)}
+      />
+      <input
+        placeholder="Location"
+        value={exp.location || ''}
+        onChange={e => updateField('experience', i, 'location', e.target.value)}
+      />
+      <textarea
+        placeholder="Description"
+        value={exp.description || ''}
+        onChange={e => updateField('experience', i, 'description', e.target.value)}
+      />
+    </div>
+  ))}
+  <button onClick={() => setFormData({ ...formData, experience: [...formData.experience, {}] })}>Add Experience</button>
+</div>
 
-      <div>
-        <h3>Projects</h3>
-        {formData.projects.map((proj, i) => (
-          <input key={i} value={proj} onChange={e => handleArrayChange('projects', i, e.target.value)} />
-        ))}
-        <button onClick={() => addField('projects')}> Add Project</button>
-      </div>
 
-      <div>
-        <h3>Certifications</h3>
-        {formData.certifications.map((cert, i) => (
-          <input key={i} value={cert} onChange={e => handleArrayChange('certifications', i, e.target.value)} />
-        ))}
-        <button onClick={() => addField('certifications')}> Add Certification</button>
+<div>
+  <h3>Projects</h3>
+  {formData.projects.map((proj, i) => (
+    <div key={i} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
+      <div style={{ textAlign: 'right' }}>
+        <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('projects', i)}>🗑️</span>
       </div>
+      <input
+        placeholder="From - To"
+        value={proj.duration || ''}
+        onChange={e => updateField('projects', i, 'duration', e.target.value)}
+      />
+      <input
+        placeholder="Project Name"
+        value={proj.name || ''}
+        onChange={e => updateField('projects', i, 'name', e.target.value)}
+      />
+      <select
+        value={proj.type || ''}
+        onChange={e => updateField('projects', i, 'type', e.target.value)}
+      >
+        <option value="">Select Type</option>
+        <option value="Major">Major</option>
+        <option value="Minor">Minor</option>
+        <option value="Mini">Mini</option>
+      </select>
+      <input
+        placeholder="Skills Used"
+        value={proj.skills || ''}
+        onChange={e => updateField('projects', i, 'skills', e.target.value)}
+      />
+      <textarea
+        placeholder="Description"
+        value={proj.description || ''}
+        onChange={e => updateField('projects', i, 'description', e.target.value)}
+      />
+    </div>
+  ))}
+  <button onClick={() => setFormData({ ...formData, projects: [...formData.projects, {}] })}>Add Project</button>
+</div>
 
-      <div>
-        <h3>Education</h3>
-        {formData.education.map((edu, i) => (
-          <div key={i}>
-            <input placeholder="From - To" onChange={e => {
-              const updated = [...formData.education];
-              updated[i] = { ...updated[i], duration: e.target.value };
-              setFormData({ ...formData, education: updated });
-            }} value={edu?.duration || ''} />
-            <input placeholder="University" onChange={e => {
-              const updated = [...formData.education];
-              updated[i] = { ...updated[i], university: e.target.value };
-              setFormData({ ...formData, education: updated });
-            }} value={edu?.university || ''} />
-            <input placeholder="Branch" onChange={e => {
-              const updated = [...formData.education];
-              updated[i] = { ...updated[i], branch: e.target.value };
-              setFormData({ ...formData, education: updated });
-            }} value={edu?.branch || ''} />
-            <input placeholder="CGPA" onChange={e => {
-              const updated = [...formData.education];
-              updated[i] = { ...updated[i], cgpa: e.target.value };
-              setFormData({ ...formData, education: updated });
-            }} value={edu?.cgpa || ''} />
-          </div>
-        ))}
-        <button onClick={() => setFormData({ ...formData, education: [...formData.education, {}] })}> Add Education</button>
+
+
+<div>
+  <h3>Certifications</h3>
+  {formData.certifications.map((cert, i) => (
+    <div key={i} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
+      <div style={{ textAlign: 'right' }}>
+        <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('certifications', i)}>🗑️</span>
       </div>
+      <input
+        placeholder="From - To"
+        value={cert.duration || ''}
+        onChange={e => updateField('certifications', i, 'duration', e.target.value)}
+      />
+      <input
+        placeholder="Certificate Name"
+        value={cert.name || ''}
+        onChange={e => updateField('certifications', i, 'name', e.target.value)}
+      />
+    </div>
+  ))}
+  <button onClick={() => setFormData({ ...formData, certifications: [...formData.certifications, {}] })}>Add Certification</button>
+</div>
+
+
+
+<div>
+  <h3>Education</h3>
+  {formData.education.map((edu, i) => (
+    <div key={i} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
+      <div style={{ textAlign: 'right' }}>
+        <span style={{ cursor: 'pointer' }} onClick={() => deleteItem('education', i)}>🗑️</span>
+      </div>
+      <input
+        placeholder="From - To"
+        onChange={e => {
+          const updated = [...formData.education];
+          updated[i] = { ...updated[i], duration: e.target.value };
+          setFormData({ ...formData, education: updated });
+        }}
+        value={edu?.duration || ''}
+      />
+      <input
+        placeholder="University"
+        onChange={e => {
+          const updated = [...formData.education];
+          updated[i] = { ...updated[i], university: e.target.value };
+          setFormData({ ...formData, education: updated });
+        }}
+        value={edu?.university || ''}
+      />
+      <input
+        placeholder="Branch"
+        onChange={e => {
+          const updated = [...formData.education];
+          updated[i] = { ...updated[i], branch: e.target.value };
+          setFormData({ ...formData, education: updated });
+        }}
+        value={edu?.branch || ''}
+      />
+      <input
+        placeholder="CGPA"
+        onChange={e => {
+          const updated = [...formData.education];
+          updated[i] = { ...updated[i], cgpa: e.target.value };
+          setFormData({ ...formData, education: updated });
+        }}
+        value={edu?.cgpa || ''}
+      />
+    </div>
+  ))}
+  <button onClick={() => setFormData({ ...formData, education: [...formData.education, {}] })}>Add Education</button>
+</div>
+
 
       <div>
         <button className="save" onClick={handleSave}>Save</button>
